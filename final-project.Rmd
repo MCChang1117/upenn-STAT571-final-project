@@ -1,30 +1,99 @@
 ---
 title: "final-project"
+author:
+- Pragyat Agrawal
+- Ruxuan Ji
+- Meng-Chuan Chang
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = T, cache.lazy = FALSE) # notice cache=T here
+knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning = F)
+
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(data.table, dplyr, tidyverse)
 ```
 
-## R Markdown
+## Abstract
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+In our final project, we would analyze rental data in the US, and build models to predict the rental price based on several factors, such as the number of dish-washer or the population.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Data Preprocessing
 
-```{r cars}
-summary(cars)
+### Read the data
+
+Firstly, we read the data from Kaggle - [US Rental Listings Summer 2021](https://www.kaggle.com/datasets/elizabethveillon/us-rental-listings-summer-2021)
+
+```{r data, warning = FALSE, message = FALSE, results='hide'}
+data <- fread("data/Rental_Properties.csv")
+summary(data)
 ```
 
-## Including Plots
+### Filter the data
 
-You can also embed plots, for example:
+The original dataset contains 276757 data, but we just need partial data. Before we randomly pick 20000 for further analysis, we can remove rows that is lack of important factors. The criteria is as follows
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+* sqft (squart feet) must be non-zero
+* population and the density must be non-zero
+* price must be non-zero
+
+```{r read, warning = FALSE, message = FALSE, results='hide'}
+data_filter <- data[(data$sqft!=0 & data$Population!=0),]
+data_filter <-
+  data_filter %>%
+  drop_na(price)
+set.seed(1)
+data_20000 <- sample_n(data_filter, 20000)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Then we drop several columns which is clearly not helpful for predicting the rental price
+
+* zip
+* link
+* street_address
+* full_address
+* ZipCity
+
+```{r drop, warning = FALSE, message = FALSE, results='hide'}
+data_20000_filter <-
+  data_20000 %>%
+  select(-zip, -link, -street_address, -full_address, -ZipCity)
+```
+
+Finally, we fill all NA with 0. The columns having NA is as follows
+
+* pool
+* dishwasher
+* washer-dryer
+* ac
+* parking
+
+Then we export the cleaned dataframe to csv
+
+
+```{r export, warning = FALSE, message = FALSE, results='hide'}
+data_20000_filter[is.na(data_20000_filter)] <- 0
+summary(data_20000_filter)
+
+file_path <- "data/Rental_Properties_20000.csv"
+
+if(!file.exists(file_path)) {
+  write.csv(data_20000_filter, file_path)
+} else {
+  data_20000_filter <- fread(file_path)
+}
+```
+
+## EDA
+
+## Model Training
+
+## Performance Analysis
+
+## Conclusion
+
