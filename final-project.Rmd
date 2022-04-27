@@ -15,8 +15,21 @@ knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning =
 
 if(!require('pacman')) {
   install.packages('pacman')
-}Hi
+}
 pacman::p_load(data.table, dplyr, tidyverse)
+```
+
+#1 Executive Summary
+
+##1.1 Background
+
+The US rental market has been growing rapidly growing over time, making it one of the most sought after areas for investment. Be it from small home owners to big private equity firms, everyone seems to be after housing, expecting the values of these houses to rise and supplement their income by renting these places. 
+
+Graph: Rental vacancy rates in the United States from 2000 to 2021, by region (Source: Statista.com)
+
+
+```{r pressure, echo=FALSE, fig.cap="A caption", out.width = '100%'}
+knitr::include_graphics("temp.png")
 ```
 
 ## Abstract
