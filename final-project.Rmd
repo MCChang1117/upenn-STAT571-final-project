@@ -5,8 +5,15 @@ author:
 - Ruxuan Ji
 - Meng-Chuan Chang
 output:
-  pdf_document: default
-  html_document: default
+  html_document:
+    toc: true
+    theme: united
+    toc_depth: 3
+    number_sections: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -18,11 +25,10 @@ if(!require('pacman')) {
 }
 pacman::p_load(data.table, dplyr, tidyverse)
 ```
-#INDEX NEEDED......
 
-#1 Executive Summary
+# Executive Summary
 
-##1.1 Background
+## Background
 
 The US rental market has been growing rapidly growing over time, making it one of the most sought after areas for investment. Be it from small home owners to big private equity firms, everyone seems to be after housing, expecting the values of these houses to rise and supplement their income by renting these places. Many people consider that location is the "only important" factor responsible for a house's value and the rent that can be expected of it, but this is far from the truth. There are a lot of other factors that need to be considered for determining housing valuations as we see a huge variation in prices in houses located in the same vicinity. There must be something about these houses which is causing such a big price change. Hence we will be analyzing the data related to US Rental Listings in Summer of 2021, to find which of these factors, which consist of many in-house amenity components, impacts housing values the most. 
 
@@ -32,23 +38,24 @@ Graph: Rental vacancy rates in the United States from 2000 to 2021, by region (S
 
 This shows how the US housing market has been more sought after year by year, making housing a form of valuable investment. This increase in demand has already pushed up the prices. 
 ```{r pressure, echo=FALSE, fig.cap="A caption", out.width = '100%'}
-knitr::include_graphics("statistic_id186392_rental-vacancy-rates-in-the-us-2000-2021-by-region.png")
+knitr::include_graphics("image/rental-vacancy-rates.png")
 ```
 
-##1.2 Description of Data
+## Description of Data
 
 The data is gathered from Kaggle, a huge repository of community published code and data. This data was pulled from Rentler.com on 7/12/2021, 8/12/2021, and 9/6/2021, and population density data was scraped by zip code from mapszipcode.com on 7/12/2021. The pull from Rentler.com resulted in 4 CSV files which included the main rental listing, the list of amenities, the list of lease terms, and a list of who was responsible to pay each utility. Many of the variables that were sparsely populated were dropped before denormalizing the dataset. The rental listing information was joined with the population and population density information from mapszipcode.com (Source: Kaggle). Many of the data columns in the dataset are embedded in binary format with 0 representing the absence of the predictor attribute while 1, shows that the attribute is present. The data file is massive at around half a Gigabyte. Working with this size of data, we would have to use EDA or take a subset of the dataset for R to run effectively and not crash over the large size of the data. We will explore this idea in later sections. For now, the data is sufficient for analysis.
 
 Our response variable is PRICE which represents the monthly price for the particular summer listing on rental.com.
 
-#1.3 Summary of Findings
+## Summary of Findings
 
-##1.4 Issues and Limitations
+### Issues and Limitations
+
 The biggest issue we initially faced was with respect to the file size which turned out to be quiet massive even for R Studio. The raw data we started with was half a gigabyte big which turned out to be very massive for any for of extrapolation. Hence we had to shorten the data out.......
 
-## Data Preprocessing
+# Data Preprocessing
 
-### Read the data
+## Read the data
 
 Firstly, we read the data from Kaggle - [US Rental Listings Summer 2021](https://www.kaggle.com/datasets/elizabethveillon/us-rental-listings-summer-2021)
 
@@ -76,16 +83,14 @@ data_20000 <- sample_n(data_filter, 20000)
 
 Then we drop several columns which is clearly not helpful for predicting the rental price
 
-* zip
 * link
 * street_address
 * full_address
-* ZipCity
 
 ```{r drop, warning = FALSE, message = FALSE, results='hide'}
 data_20000_filter <-
   data_20000 %>%
-  select(-zip, -link, -street_address, -full_address, -ZipCity)
+  select(-link, -street_address, -full_address)
 ```
 
 Finally, we fill all NA with 0. The columns having NA is as follows
@@ -95,6 +100,8 @@ Finally, we fill all NA with 0. The columns having NA is as follows
 * washer-dryer
 * ac
 * parking
+* zip
+* ZipCity
 
 Then we export the cleaned dataframe to csv
 
@@ -112,11 +119,11 @@ if(!file.exists(file_path)) {
 }
 ```
 
-## EDA
+# EDA
 
-## Model Training
+# Model Training
 
-## Performance Analysis
+# Performance Analysis
 
-## Conclusion
+# Conclusion
 
