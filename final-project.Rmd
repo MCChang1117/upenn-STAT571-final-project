@@ -5,13 +5,13 @@ author:
 - Ruxuan Ji
 - Meng-Chuan Chang
 output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
   html_document:
     toc: true
     theme: united
-    toc_depth: 3
-    number_sections: true
-  pdf_document:
-    toc: true
     toc_depth: 3
     number_sections: true
 ---
@@ -53,9 +53,11 @@ Our response variable is PRICE which represents the monthly price for the partic
 
 The biggest issue we initially faced was with respect to the file size which turned out to be quiet massive even for R Studio. The raw data we started with was half a gigabyte big which turned out to be very massive for any for of extrapolation. Hence we had to shorten the data out.......
 
-# Data Preprocessing
+# Exploratory Data Analysis
 
-## Read the data
+## Data Preprocessing/Cleaning
+
+### Read the data
 
 Firstly, we read the data from Kaggle - [US Rental Listings Summer 2021](https://www.kaggle.com/datasets/elizabethveillon/us-rental-listings-summer-2021)
 
@@ -119,9 +121,18 @@ if(!file.exists(file_path)) {
 }
 ```
 
-# EDA
+## Data Transformations and Plots
+
+```{r}
+View(data_20000_filter)
+```
+
 
 # Model Training
+```{r}
+
+```
+
 
 # Performance Analysis
 
