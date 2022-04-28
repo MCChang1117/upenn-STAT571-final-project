@@ -181,12 +181,15 @@ p<-ggplot(data=data_20000_filter, aes(x=state)) +
   xlab('State in which the property is located') +
   geom_bar()
 p
+```
 
+```{r, warning = FALSE, message = FALSE, results='hide'}
 number_states <- data_20000_filter %>%
   group_by(state) %>% count() 
 
 arrange(number_states, -n)
 ```
+
 The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
 
 
@@ -195,10 +198,6 @@ To do the further model analysis, we transform some of the data. Firstly, conver
 * house_type
 * smoking_ind
 * pets_ind
-
-```{r view, warning = FALSE, message = FALSE, results='hide'}
-data_20000_filter
-```
 
 ```{r convert chr, warning = FALSE, message = FALSE, results='hide'}
 data_model <- data_20000_filter
@@ -212,6 +211,35 @@ data_model
 ```
 
 # Model Training
+
+Firstly, we split the data for choosing and validating and model
+
+* train: 13000
+* test: 5000
+* validation: the rest
+
+```{r reduce, warning = FALSE, message = FALSE, results='hide'}
+set.seed(1)  # for the purpose of reporducibility
+n <- nrow(data_model)
+train_test.index <- sample(n, 18000)
+train.index <- sample(train_test.index, 13000)
+#train.index <- sample(n, 13000)
+test.index <- sample(n, 19999) - (sample(n, 19999)-train_test.index) - train.index
+
+# Split the data
+
+n1 <- floor(13000)
+n2 <- floor(5000)
+set.seed(1)
+idx_train <- sample(n, n1)
+idx_no_train <- which(! seq(1:n) %in% idx_train)
+idx_test <- sample(idx_no_train, n2)
+idx_val <- which(! idx_no_train %in% idx_test)
+
+data.w.price.train <- data_model[idx_train,]
+data.w.price.test <- data_model[idx_test,]
+data.w.price.val <- data_model[idx_val,]
+```
 
 # Performance Analysis
 

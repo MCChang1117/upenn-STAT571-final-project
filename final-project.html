@@ -192,11 +192,9 @@ pre code {
 </ul></li>
 <li><a href="#data-transformations-and-plots"><span class="toc-section-number">2.2</span> Data Transformations and Plots</a></li>
 </ul></li>
-<li><a href="#a-tibble-51-2"><span class="toc-section-number">3</span> A tibble: 51 × 2</a></li>
-<li><a href="#groups-state-51"><span class="toc-section-number">4</span> Groups: state [51]</a></li>
-<li><a href="#model-training"><span class="toc-section-number">5</span> Model Training</a></li>
-<li><a href="#performance-analysis"><span class="toc-section-number">6</span> Performance Analysis</a></li>
-<li><a href="#conclusion"><span class="toc-section-number">7</span> Conclusion</a></li>
+<li><a href="#model-training"><span class="toc-section-number">3</span> Model Training</a></li>
+<li><a href="#performance-analysis"><span class="toc-section-number">4</span> Performance Analysis</a></li>
+<li><a href="#conclusion"><span class="toc-section-number">5</span> Conclusion</a></li>
 </ul>
 </div>
 
@@ -310,35 +308,54 @@ p</code></pre>
   group_by(state) %&gt;% count() 
 
 arrange(number_states, -n)</code></pre>
-</div>
-</div>
-<div id="a-tibble-51-2" class="section level1" number="3">
-<h1><span class="header-section-number">3</span> A tibble: 51 × 2</h1>
-</div>
-<div id="groups-state-51" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Groups: state [51]</h1>
-<p>state n <chr> <int> 1 TX 3869 2 CA 2238 3 IL 1261 4 FL 969 5 WA 817 6 GA 680 7 NC 596 8 MN 535 9 PA 500 10 UT 499 # … with 41 more rows The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed.</p>
+<p>The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed.</p>
 <p>To do the further model analysis, we transform some of the data. Firstly, convert the following columns from characters to binary data</p>
 <ul>
 <li>house_type</li>
 <li>smoking_ind</li>
 <li>pets_ind</li>
 </ul>
-<pre class="r"><code>data_20000_filter</code></pre>
 <pre class="r"><code>data_model &lt;- data_20000_filter
 data_model$house_type &lt;- as.numeric(as.factor(data_model$house_type))
 data_model$smoking_ind &lt;- as.numeric(as.factor(data_model$smoking_ind))
 data_model$pets_ind &lt;- as.numeric(as.factor(data_model$pets_ind))</code></pre>
 <pre class="r"><code>data_model</code></pre>
 </div>
-<div id="model-training" class="section level1" number="5">
-<h1><span class="header-section-number">5</span> Model Training</h1>
 </div>
-<div id="performance-analysis" class="section level1" number="6">
-<h1><span class="header-section-number">6</span> Performance Analysis</h1>
+<div id="model-training" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Model Training</h1>
+<p>Firstly, we split the data for choosing and validating and model</p>
+<ul>
+<li>train: 13000</li>
+<li>test: 5000</li>
+<li>validation: the rest</li>
+</ul>
+<pre class="r"><code>set.seed(1)  # for the purpose of reporducibility
+n &lt;- nrow(data_model)
+train_test.index &lt;- sample(n, 18000)
+train.index &lt;- sample(train_test.index, 13000)
+#train.index &lt;- sample(n, 13000)
+test.index &lt;- sample(n, 19999) - (sample(n, 19999)-train_test.index) - train.index
+
+# Split the data
+
+n1 &lt;- floor(13000)
+n2 &lt;- floor(5000)
+set.seed(1)
+idx_train &lt;- sample(n, n1)
+idx_no_train &lt;- which(! seq(1:n) %in% idx_train)
+idx_test &lt;- sample(idx_no_train, n2)
+idx_val &lt;- which(! idx_no_train %in% idx_test)
+
+data.w.price.train &lt;- data_model[idx_train,]
+data.w.price.test &lt;- data_model[idx_test,]
+data.w.price.val &lt;- data_model[idx_val,]</code></pre>
 </div>
-<div id="conclusion" class="section level1" number="7">
-<h1><span class="header-section-number">7</span> Conclusion</h1>
+<div id="performance-analysis" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Performance Analysis</h1>
+</div>
+<div id="conclusion" class="section level1" number="5">
+<h1><span class="header-section-number">5</span> Conclusion</h1>
 </div>
 
 
