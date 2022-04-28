@@ -5,15 +5,17 @@ author:
 - Ruxuan Ji
 - Meng-Chuan Chang
 output:
-  pdf_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
   html_document:
     toc: true
     theme: united
     toc_depth: 3
     number_sections: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r setup, include=FALSE}
@@ -23,7 +25,7 @@ knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning =
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, dplyr, tidyverse)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2)
 ```
 
 # Executive Summary
@@ -47,9 +49,47 @@ The data is gathered from Kaggle, a huge repository of community published code 
 
 Our response variable is PRICE which represents the monthly price for the particular summer listing on rental.com.
 
+
+\begin{table}[!h]
+\centering
+\caption{Variables and their descriptions}
+\begin{tabular}{cc}
+\hline 
+Variable & Description\tabularnewline
+\hline 
+V1 & Numbering for the house number we are looking at (form of house identification)\tabularnewline
+pool & Binary data to show if pool exists in this house (1) or not (0)\tabularnewline
+dishwasher & Binary data to show if dishwasher exists in the house (1) or not (0)\tabularnewline
+washer-dryer & Binary data to show if washer-dryer exists in the house(1) or not (0)\tabularnewline
+ac & Binary data to show if air conditioning exists in the house (1) or not (0)\tabularnewline
+parking & Binary data to show if Parking exists in the house (1) or not (0)\tabularnewline
+zip & Zip code of the property\tabularnewline
+price & Monthly rent price for the property\tabularnewline
+city & City where the property is located\tabularnewline
+num\_beds & Number of beds in the property\tabularnewline
+num\_baths & Number of baths in the property\tabularnewline
+house\_type & Type of house we are looking at\tabularnewline
+sqft & Square Feet in the property\tabularnewline
+smoking\_ind & Does the rental allow smoking (Yes/No) \tabularnewline
+pets\_ind & Does the rental allow pets (Yes/No)\tabularnewline
+acres & Number of acres rental includes\tabularnewline
+description & 4000 character listing description of the rental\tabularnewline
+ZipCity & Primary city for the zip code\tabularnewline
+Population & Population in the zip code\tabularnewline
+PopulationDensity & Population density per square mile for zip code\tabularnewline
+security\_deposit & Security deposit required\tabularnewline
+\hline 
+\end{tabular}
+\label{lyxtab2}
+\end{table}
+
+## Goal
+
+The goal of this study is to analyze the most important factors affecting the housing prices in the US. We will be using the variables in the dataset to do so. In our preliminary market analysis, we found that housing prices are determined by many factors and hence we will try to ascertain factors which have a significant impact on housing prices. Our goal is to build a model that will give us the value added or subtracted from a house with/without the presence of a variable factor. This observation will benefit people who are looking to rent properties in the US and can help them get a better value for the kind of place they may be looking for. 
+
 ## Summary of Findings
 
-### Issues and Limitations
+## Issues and Limitations
 
 The biggest issue we initially faced was with respect to the file size which turned out to be quiet massive even for R Studio. The raw data we started with was half a gigabyte big which turned out to be very massive for any for of extrapolation. Hence we had to shorten the data out.......
 
@@ -122,6 +162,33 @@ if(!file.exists(file_path)) {
 ```
 
 ## Data Transformations and Plots
+
+```{r, warning = FALSE, message = FALSE, results='asis'}
+p<-ggplot(data=data_20000_filter, aes(x=house_type)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  xlab('Type of Property') +
+  geom_bar()
+p
+
+y <- count(data_20000_filter, house_type)
+print(y)
+```
+Looking at the data we see that the properties we will most be evaluating will be Apartment style places with 17749 observations. Other places are lesser in number but still there. The second largest group is the Condo/Multiplex group that we are looking at with 1519 observations. Other than that the smallest group we see is the sublease or student contract group which only has 1 observation.
+
+```{r, warning = FALSE, message = FALSE, results='asis'}
+p<-ggplot(data=data_20000_filter, aes(x=state)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  xlab('State in which the property is located') +
+  geom_bar()
+p
+
+number_states <- data_20000_filter %>%
+  group_by(state) %>% count() 
+
+arrange(number_states, -n)
+```
+The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
+
 
 To do the further model analysis, we transform some of the data. Firstly, convert the following columns from characters to binary data
 
