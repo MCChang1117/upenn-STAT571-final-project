@@ -213,7 +213,7 @@ data_20000_filter %>%
 We see the prices remaining fairly same for the start with the prices rising with states like New York, California, Florida and Massachusetts. This is evidently true for these "more expensive" places as states on the right end of the spectrum like California, and Massachusetts are known for their high per capita incomes which tends to push housing prices up. There is a lot of variation in data as well as we move to states with higher housing prices, indicated through the presence of excessive outliers on the right end of the boxplot.
 
 # Model Training
-```{r}
+```{r, warning = FALSE, message = FALSE, results= 'asis'}
 
 ```
 
