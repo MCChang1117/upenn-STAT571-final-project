@@ -192,7 +192,10 @@ pre code {
 </ul></li>
 <li><a href="#data-transformations-and-plots"><span class="toc-section-number">2.2</span> Data Transformations and Plots</a></li>
 </ul></li>
-<li><a href="#model-training"><span class="toc-section-number">3</span> Model Training</a></li>
+<li><a href="#model-training"><span class="toc-section-number">3</span> Model Training</a>
+<ul>
+<li><a href="#random-forest"><span class="toc-section-number">3.1</span> Random Forest</a></li>
+</ul></li>
 <li><a href="#performance-analysis"><span class="toc-section-number">4</span> Performance Analysis</a></li>
 <li><a href="#conclusion"><span class="toc-section-number">5</span> Conclusion</a></li>
 </ul>
@@ -261,10 +264,11 @@ data_20000 &lt;- sample_n(data_filter, 20000)</code></pre>
 <li>full_address</li>
 <li>acres</li>
 <li>description</li>
+<li>zip city (duplicated data)</li>
 </ul>
 <pre class="r"><code>data_20000_filter &lt;-
   data_20000 %&gt;%
-  select(-link, -street_address, -full_address, -acres, -description)</code></pre>
+  select(-link, -street_address, -full_address, -acres, -description, -ZipCity)</code></pre>
 <p>Finally, we fill all NA with 0. The columns having NA is as follows</p>
 <ul>
 <li>pool</li>
@@ -314,12 +318,10 @@ arrange(number_states, -n)</code></pre>
 <li>house_type</li>
 <li>smoking_ind</li>
 <li>pets_ind</li>
+<li>state</li>
 </ul>
-<pre class="r"><code>data_model &lt;- data_20000_filter
-data_model$house_type &lt;- as.numeric(as.factor(data_model$house_type))
-data_model$smoking_ind &lt;- as.numeric(as.factor(data_model$smoking_ind))
-data_model$pets_ind &lt;- as.numeric(as.factor(data_model$pets_ind))</code></pre>
-<pre class="r"><code>data_model</code></pre>
+<p>Also, we need to predict the rental price which is continuous. In order to implement random forest, we transform the price to binary outcome, with the threshold of median of rental price.</p>
+<p>Unlike state, the amount of unique city is far more than the state. In our sample data, we find there are 2395 unique cities, more than 1/10 of the observation. Therefore, we choose to discard this factor for our further model analysis.</p>
 </div>
 </div>
 <div id="model-training" class="section level1" number="3">
@@ -330,26 +332,9 @@ data_model$pets_ind &lt;- as.numeric(as.factor(data_model$pets_ind))</code></pre
 <li>test: 5000</li>
 <li>validation: the rest</li>
 </ul>
-<pre class="r"><code>set.seed(1)  # for the purpose of reporducibility
-n &lt;- nrow(data_model)
-train_test.index &lt;- sample(n, 18000)
-train.index &lt;- sample(train_test.index, 13000)
-#train.index &lt;- sample(n, 13000)
-test.index &lt;- sample(n, 19999) - (sample(n, 19999)-train_test.index) - train.index
-
-# Split the data
-
-n1 &lt;- floor(13000)
-n2 &lt;- floor(5000)
-set.seed(1)
-idx_train &lt;- sample(n, n1)
-idx_no_train &lt;- which(! seq(1:n) %in% idx_train)
-idx_test &lt;- sample(idx_no_train, n2)
-idx_val &lt;- which(! idx_no_train %in% idx_test)
-
-data.w.price.train &lt;- data_model[idx_train,]
-data.w.price.test &lt;- data_model[idx_test,]
-data.w.price.val &lt;- data_model[idx_val,]</code></pre>
+<div id="random-forest" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Random Forest</h2>
+</div>
 </div>
 <div id="performance-analysis" class="section level1" number="4">
 <h1><span class="header-section-number">4</span> Performance Analysis</h1>

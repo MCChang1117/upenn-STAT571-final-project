@@ -130,11 +130,12 @@ Then we drop several columns which is clearly not helpful for predicting the ren
 * full_address
 * acres
 * description
+* zip city (duplicated data)
 
 ```{r drop, warning = FALSE, message = FALSE, results='hide'}
 data_20000_filter <-
   data_20000 %>%
-  select(-link, -street_address, -full_address, -acres, -description)
+  select(-link, -street_address, -full_address, -acres, -description, -ZipCity)
 ```
 
 Finally, we fill all NA with 0. The columns having NA is as follows
@@ -198,16 +199,29 @@ To do the further model analysis, we transform some of the data. Firstly, conver
 * house_type
 * smoking_ind
 * pets_ind
+* state
 
-```{r convert chr, warning = FALSE, message = FALSE, results='hide'}
+```{r convert chr, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_model <- data_20000_filter
 data_model$house_type <- as.numeric(as.factor(data_model$house_type))
 data_model$smoking_ind <- as.numeric(as.factor(data_model$smoking_ind))
 data_model$pets_ind <- as.numeric(as.factor(data_model$pets_ind))
+data_model$state <- as.numeric(as.factor(data_model$state))
+data_model <- select(data_model, -V1)
 ```
 
-```{r , warning = FALSE, message = FALSE, results='hide'}
-data_model
+Also, we need to predict the rental price which is continuous. In order to implement random forest, we transform the price to binary outcome, with the threshold of median of rental price, which is (1500).
+
+```{r binary, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+price.median <- median(data_model$price)
+data_model$price_binary <- ifelse(data_model$price < price.median, 0, 1)
+```
+
+Unlike state, the amount of unique city is far more than the state. In our sample data, we find there are 2395 unique cities, more than 1/10 of the observation. Therefore, we choose to discard this factor for our further model analysis.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+length(unique(data_model$city))
+data_model <- select(data_model, -city)
 ```
 
 # Model Training
@@ -218,7 +232,7 @@ Firstly, we split the data for choosing and validating and model
 * test: 5000
 * validation: the rest
 
-```{r reduce, warning = FALSE, message = FALSE, results='hide'}
+```{r, echo = FALSE, reduce, warning = FALSE, message = FALSE, results='hide'}
 set.seed(1)  # for the purpose of reporducibility
 n <- nrow(data_model)
 train_test.index <- sample(n, 18000)
@@ -240,6 +254,8 @@ data.w.price.train <- data_model[idx_train,]
 data.w.price.test <- data_model[idx_test,]
 data.w.price.val <- data_model[idx_val,]
 ```
+
+## Random Forest
 
 # Performance Analysis
 
