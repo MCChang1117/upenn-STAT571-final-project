@@ -25,7 +25,7 @@ knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning =
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, randomForest)
 ```
 
 # Executive Summary
@@ -255,7 +255,41 @@ data.w.price.test <- data_model[idx_test,]
 data.w.price.val <- data_model[idx_val,]
 ```
 
+```{r, echo = FALSE, reduce, warning = FALSE, message = FALSE, results='hide'}
+data.rf.train <- select(data.w.price.train, -price)
+data.rf.train <- 
+  data.w.price.train %>%
+  select(price_binary, everything())
+```
+
 ## Random Forest
+
+Firstly, we use OOB to find the testing error for given parameter, and we choose mtry from 1 to 10, with 150 tree.
+
+```{r tune rf hyperparameter, warning = FALSE, message = FALSE, results='asis'}
+
+data.rf.train <- select(data.w.price.train, -price)
+
+set.seed(1)
+rf.error.p <- 1:10
+for (p in 1:10){
+  fileName <- paste("data/rf_tune_", p, "_150.RData", sep = "")
+  if(!file.exists(fileName)) {
+    fit.rf.train <- randomForest(price_binary~., data=data.rf.train, mtry=p, ntree=150)
+    save(fit.rf.train, file = fileName)
+  } else {
+    load(fileName)
+  }
+  rf.error.p[p] <- fit.rf.train$err.rate[150]
+}
+
+plot(1:10, rf.error.p, pch=16,
+     main = "Testing errors of mtry with 150 trees",
+     xlab="mtry",
+     ylab="OOB mse of mtry")
+line(1:10, rf.error.p)
+
+```
 
 # Performance Analysis
 
