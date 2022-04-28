@@ -6,15 +6,18 @@ author:
 - Meng-Chuan Chang
 output:
   pdf_document:
-    toc: true
+    toc: yes
     toc_depth: 3
-    number_sections: true
+    number_sections: yes
   html_document:
-    toc: true
+    toc: yes
     theme: united
     toc_depth: 3
-    number_sections: true
-editor_options: 
+    number_sections: yes
+  word_document:
+    toc: yes
+    toc_depth: '3'
+editor_options:
   chunk_output_type: inline
 ---
 
@@ -163,35 +166,51 @@ if(!file.exists(file_path)) {
 
 ## Data Transformations and Plots
 
-```{r}
-View(data_20000_filter)
-```
 
-```{r}
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 p<-ggplot(data=data_20000_filter, aes(x=house_type)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('Type of Property') +
   geom_bar()
 p
-
+```
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 y <- count(data_20000_filter, house_type)
 print(y)
 ```
+
 Looking at the data we see that the properties we will most be evaluating will be Apartment style places with 17749 observations. Other places are lesser in number but still there. The second largest group is the Condo/Multiplex group that we are looking at with 1519 observations. Other than that the smallest group we see is the sublease or student contract group which only has 1 observation.
 
-```{r}
+```{r, echo = FALSE,warning = FALSE, message = FALSE, results= 'asis'}
 p<-ggplot(data=data_20000_filter, aes(x=state)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('State in which the property is located') +
   geom_bar()
 p
-
+```
+```{r}
 number_states <- data_20000_filter %>%
   group_by(state) %>% count() 
 
 arrange(number_states, -n)
 ```
+
+
+
 The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
+
+
+```{r, warning = FALSE, message = FALSE, results= 'asis'}
+data_20000_filter %>% 
+  ggplot(aes(x = reorder(state,price), y = price ,group=state))+
+  ylim (0, 10000) + 
+  geom_boxplot()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  ggtitle("Within State Variability of Log Death Rate")+
+  ylab("Monthly rent (in $)")
+```
+
+We see the prices remaining fairly same for the start with the prices rising with states like New York, California, Florida and Massachusetts. This is evidently true for these "more expensive" places as states on the right end of the spectrum like California, and Massachusetts are known for their high per capita incomes which tends to push housing prices up. There is a lot of variation in data as well as we move to states with higher housing prices, indicated through the presence of excessive outliers on the right end of the boxplot.
 
 # Model Training
 ```{r}
