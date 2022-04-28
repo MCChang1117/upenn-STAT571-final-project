@@ -204,6 +204,7 @@ The data represents all states, some more than others. Texas is the most represe
 data_20000_filter %>% 
   ggplot(aes(x = reorder(state,price), y = price ,group=state))+
   ylim (0, 10000) + 
+  xlab('State')+
   geom_boxplot()+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   ggtitle("Within State Variability of Log Death Rate")+
