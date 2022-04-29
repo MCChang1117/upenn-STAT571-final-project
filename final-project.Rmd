@@ -28,7 +28,7 @@ knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning =
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, randomForest)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, randomForest, tfdatasets, keras)
 ```
 
 # Executive Summary
@@ -104,9 +104,53 @@ The biggest issue we initially faced was with respect to the file size which tur
 
 Firstly, we read the data from Kaggle - [US Rental Listings Summer 2021](https://www.kaggle.com/datasets/elizabethveillon/us-rental-listings-summer-2021)
 
-```{r data, warning = FALSE, message = FALSE, results='hide'}
-data <- fread("data/Rental_Properties.csv")
-summary(data)
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+rental_data <- fread("data/Rental_Properties.csv")
+summary(rental_data)
+```
+
+Then we read SOI Tax statistics in 2019 from [IRS](https://www.irs.gov/statistics/soi-tax-stats-individual-income-tax-statistics-2019-zip-code-data-soi)
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+tax_data <- fread("data/income.csv")
+```
+
+Before joining those two dataset, we would use groupby to find the income level based on zip code
+
+Here, `AGI_STUB` shows the level of adjusted gross income, and `N1` shows the number of returns of each level.
+
+The following shows the level and corresponding income range
+
+|AGI_STUB|Range|
+|-|-|
+|1|\$1\~25,000|
+|2|\$25,000\~\$50,000|
+|3|\$50,000\~\$75,000|
+|4|\$75,000\~\$100,000|
+|5|\$100,000\~\$200,000|
+|6|\$200,000\~|
+
+Based on the above two columns, we generate a new column `avg_level` from 1 to 6, showing the average level of gross income in each zip code region
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+tax_data_group <-
+  tax_data %>%
+  rename(zip = zipcode) %>%
+  select(zip, agi_stub, N1) %>%
+  mutate(n_level = agi_stub * N1) %>%
+  group_by(zip) %>%
+  summarise(avg_level = sum(n_level)/sum(N1))
+  
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+rental_tax_data <-
+  rental_data %>%
+  left_join(tax_data_group, by="zip")
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+data <- rental_tax_data
 ```
 
 ### Filter the data
@@ -117,7 +161,7 @@ The original dataset contains 276757 data, but we just need partial data. Before
 * population and the density must be non-zero
 * price must be non-zero
 
-```{r read, warning = FALSE, message = FALSE, results='hide'}
+```{r read, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_filter <- data[(data$sqft!=0 & data$Population!=0),]
 data_filter <-
   data_filter %>%
@@ -135,7 +179,7 @@ Then we drop several columns which is clearly not helpful for predicting the ren
 * description
 * zip city (duplicated data)
 
-```{r drop, warning = FALSE, message = FALSE, results='hide'}
+```{r drop, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_20000_filter <-
   data_20000 %>%
   select(-link, -street_address, -full_address, -acres, -description, -ZipCity)
@@ -152,7 +196,7 @@ Finally, we fill all NA with 0. The columns having NA is as follows
 Then we export the cleaned dataframe to csv
 
 
-```{r export, warning = FALSE, message = FALSE, results='hide'}
+```{r export, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_20000_filter[is.na(data_20000_filter)] <- 0
 summary(data_20000_filter)
 
@@ -208,7 +252,7 @@ data_20000_filter %>%
   xlab('State')+
   geom_boxplot()+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
-  ggtitle("Within State Variability of Log Death Rate")+
+  ggtitle("Within State Variability of Rental Price")+
   ylab("Monthly rent (in $)")
 ```
 
