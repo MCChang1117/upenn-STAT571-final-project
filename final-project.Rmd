@@ -5,13 +5,13 @@ author:
 - Ruxuan Ji
 - Meng-Chuan Chang
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+    number_sections: yes
   html_document:
     toc: yes
     theme: united
-    toc_depth: 3
-    number_sections: yes
-  pdf_document:
-    toc: yes
     toc_depth: 3
     number_sections: yes
   word_document:
@@ -157,12 +157,14 @@ data_20000_filter[is.na(data_20000_filter)] <- 0
 summary(data_20000_filter)
 
 file_path <- "data/Rental_Properties_20000.csv"
+write.csv(data_20000_filter, file_path)
+data_20000_filter <- fread(file_path)
 
-if(!file.exists(file_path)) {
-  write.csv(data_20000_filter, file_path)
-} else {
-  data_20000_filter <- fread(file_path)
-}
+# if(!file.exists(file_path)) {
+#   write.csv(data_20000_filter, file_path)
+# } else {
+#   data_20000_filter <- fread(file_path)
+# }
 ```
 
 ## Data Transformations and Plots
@@ -227,7 +229,7 @@ data_model$house_type <- as.numeric(as.factor(data_model$house_type))
 data_model$smoking_ind <- as.numeric(as.factor(data_model$smoking_ind))
 data_model$pets_ind <- as.numeric(as.factor(data_model$pets_ind))
 data_model$state <- as.numeric(as.factor(data_model$state))
-# data_model <- select(data_model, -V1)
+data_model <- select(data_model, -V1)
 ```
 
 Also, we need to predict the rental price which is continuous. In order to implement random forest, we transform the price to binary outcome, with the threshold of median of rental price, which is (1500).
@@ -285,9 +287,16 @@ data.rf.train <-
   data.rf.train %>%
   select(price_binary, everything())
 
+data.rf.test <- select(data.w.price.test, -price)
+data.rf.test <- 
+  data.rf.test %>%
+  select(price_binary, everything())
+
 names(data.rf.train)[names(data.rf.train) == 'washer-dryer'] <- 'washer_dryer'
-data.rf.train
+names(data.rf.test)[names(data.rf.test) == 'washer-dryer'] <- 'washer_dryer'
 ```
+
+### Tune Hyperparameter
 
 Firstly, we use OOB to find the testing error for given parameter, and we choose mtry from 1 to 10, with 150 tree.
 
@@ -314,7 +323,50 @@ plot(1:10, rf.error.p, pch=16,
 
 ```
 
-According to the above plot, we choose 3 as mtry based on elbow rule
+According to the above plot, we choose 3 as mtry based on elbow rule.
+
+Then we set ntree to be 500, to find the optimal number of tree.
+
+```{r given mtry 15, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+
+if(!file.exists("data/rf_model_3_500.RData")) {
+  fit.rf.train <- randomForest(price_binary~., data=data.rf.train, mtry=3, ntree=500)
+  save(fit.rf.train, file = "data/rf_model_3_500.RData")
+} else {
+  load("data/rf_model_3_500.RData")
+}
+plot(fit.rf.train, main = "Testing errors of trees with 3 mtry")
+```
+
+Also based on the above plot, we choose 100 as ntree
+
+### PCA
+
+Apply PCA to dataset would help us to remove correlated data and speed up the runtime of the program. However, in this analysis, the runtime to train 20000 data is fast enough (about several minutes). Therefore, we decide not to implement PCA here to keep the information in the dataset.
+
+### Performance of Random Forest Model
+
+Finally, given fixed mtry and ntree, we can compute the testing error of our random forest model. After we do prediction on the testing dataset, we set the threshold as 0.5. If the result is greater than 0.5, we would categorize the result as 1. On the other hand, result less than 0.5 is 0. Finally we compte the error to be 0.082
+
+```{r fit rf, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+set.seed(1)
+
+if(!file.exists("data/rf_model_4_100.RData")) {
+  fit.rf.train <- randomForest(price_binary~., data=data.rf.train, mtry=4, ntree=100)
+  save(fit.rf.train, file = "data/rf_model_4_100.RData")
+} else {
+  load("data/rf_model_4_100.RData")
+}
+
+plot(fit.rf.train, main = "Random Forest Model with 4 mtry and 100 ntree")
+```
+
+```{r calculate rf error, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+# This code chunk cannot be compiled while knitting to PDF (because of dummy function)
+# predict.rf <- predict(fit.rf.train, newdata=data.rf.test)
+# diff_col <- ifelse(abs(data.rf.test$price_binary - predict.rf) >=0.5, 1, 0)
+# mean(diff_col)
+```
 
 # Performance Analysis
 
