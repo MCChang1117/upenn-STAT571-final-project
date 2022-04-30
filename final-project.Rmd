@@ -4,30 +4,21 @@ author:
 - Pragyat Agrawal
 - Ruxuan Ji
 - Meng-Chuan Chang
-output:
-<<<<<<< HEAD
+date: May 1, 2022
+output: 
   pdf_document:
-    toc: yes
+    toc: true
     toc_depth: 3
     number_sections: yes
-  html_document:
-    toc: yes
-    theme: united
-=======
   html_document:
     toc: true
     theme: united
     toc_depth: 3
     number_sections: true
-  pdf_document:
-    toc: true
->>>>>>> c9e37f7e008ce68760580d28721c5e5cdb355fad
-    toc_depth: 3
-    number_sections: yes
   word_document:
     toc: yes
     toc_depth: '3'
-editor_options:
+    editor_options:
   chunk_output_type: inline
 ---
 
@@ -38,7 +29,7 @@ knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning =
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, knitr)
 ```
 
 # Executive Summary
@@ -180,15 +171,17 @@ if(!file.exists(file_path)) {
 <<<<<<< HEAD
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
-=======
+```
+
+  
 ```{r, warning = FALSE, message = FALSE, results='asis'}
->>>>>>> c9e37f7e008ce68760580d28721c5e5cdb355fad
 p<-ggplot(data=data_20000_filter, aes(x=house_type)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('Type of Property') +
   geom_bar()
 p
 ```
+
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 y <- count(data_20000_filter, house_type)
 print(y)
@@ -198,9 +191,9 @@ Looking at the data we see that the properties we will most be evaluating will b
 
 <<<<<<< HEAD
 ```{r, echo = FALSE,warning = FALSE, message = FALSE, results= 'asis'}
-=======
+```
+
 ```{r, warning = FALSE, message = FALSE, results='asis'}
->>>>>>> c9e37f7e008ce68760580d28721c5e5cdb355fad
 p<-ggplot(data=data_20000_filter, aes(x=state)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('State in which the property is located') +
@@ -209,17 +202,15 @@ p
 ```
 <<<<<<< HEAD
 ```{r}
-=======
+```
 
 ```{r, warning = FALSE, message = FALSE, results='hide'}
->>>>>>> c9e37f7e008ce68760580d28721c5e5cdb355fad
 number_states <- data_20000_filter %>%
   group_by(state) %>% count() 
 
 arrange(number_states, -n)
 ```
 
-<<<<<<< HEAD
 
 
 The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
@@ -240,7 +231,8 @@ We see the prices remaining fairly same for the start with the prices rising wit
 
 # Model Training
 ```{r, warning = FALSE, message = FALSE, results= 'asis'}
-=======
+```
+
 The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
 
 
@@ -251,13 +243,14 @@ To do the further model analysis, we transform some of the data. Firstly, conver
 * pets_ind
 * state
 
+
 ```{r convert chr, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_model <- data_20000_filter
 data_model$house_type <- as.numeric(as.factor(data_model$house_type))
 data_model$smoking_ind <- as.numeric(as.factor(data_model$smoking_ind))
 data_model$pets_ind <- as.numeric(as.factor(data_model$pets_ind))
 data_model$state <- as.numeric(as.factor(data_model$state))
-data_model <- select(data_model, -V1)
+#data_model <- select(data_model, -V1)
 ```
 
 Also, we need to predict the rental price which is continuous. In order to implement random forest, we transform the price to binary outcome, with the threshold of median of rental price, which is (1500).
@@ -275,7 +268,6 @@ data_model <- select(data_model, -city)
 ```
 
 # Model Training
->>>>>>> c9e37f7e008ce68760580d28721c5e5cdb355fad
 
 Firstly, we split the data for choosing and validating and model
 
