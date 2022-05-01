@@ -24,11 +24,11 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = T, cache.lazy = FALSE) # notice cache=T here
 knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning = F)
-
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest)
+
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car)
 ```
 
 # Executive Summary
@@ -104,9 +104,53 @@ The biggest issue we initially faced was with respect to the file size which tur
 
 Firstly, we read the data from Kaggle - [US Rental Listings Summer 2021](https://www.kaggle.com/datasets/elizabethveillon/us-rental-listings-summer-2021)
 
-```{r data, warning = FALSE, message = FALSE, results='hide'}
-data <- fread("data/Rental_Properties.csv")
-summary(data)
+```{r load, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+rental_data <- fread("data/Rental_Properties.csv")
+summary(rental_data)
+```
+
+Then we read SOI Tax statistics in 2019 from [IRS](https://www.irs.gov/statistics/soi-tax-stats-individual-income-tax-statistics-2019-zip-code-data-soi)
+
+```{r load2, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+tax_data <- fread("data/income.csv")
+```
+
+Before joining those two dataset, we would use groupby to find the income level based on zip code
+
+Here, `AGI_STUB` shows the level of adjusted gross income, and `N1` shows the number of returns of each level.
+
+The following shows the level and corresponding income range
+
+|AGI_STUB|Range|
+|-|-|
+|1|\$1\~25,000|
+|2|\$25,000\~\$50,000|
+|3|\$50,000\~\$75,000|
+|4|\$75,000\~\$100,000|
+|5|\$100,000\~\$200,000|
+|6|\$200,000\~|
+
+Based on the above two columns, we generate a new column `avg_level` from 1 to 6, showing the average level of gross income in each zip code region
+
+```{r select, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+tax_data_group <-
+  tax_data %>%
+  rename(zip = zipcode) %>%
+  select(zip, agi_stub, N1) %>%
+  mutate(n_level = agi_stub * N1) %>%
+  group_by(zip) %>%
+  summarise(avg_level = sum(n_level)/sum(N1))
+  
+```
+
+```{r merge, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+rental_tax_data <-
+  rental_data %>%
+  left_join(tax_data_group, by="zip")
+```
+
+```{r assign data, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+data <- rental_tax_data
 ```
 
 ### Filter the data
@@ -117,7 +161,7 @@ The original dataset contains 276757 data, but we just need partial data. Before
 * population and the density must be non-zero
 * price must be non-zero
 
-```{r read, warning = FALSE, message = FALSE, results='hide'}
+```{r read, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_filter <- data[(data$sqft!=0 & data$Population!=0),]
 data_filter <-
   data_filter %>%
@@ -135,7 +179,7 @@ Then we drop several columns which is clearly not helpful for predicting the ren
 * description
 * zip city (duplicated data)
 
-```{r drop, warning = FALSE, message = FALSE, results='hide'}
+```{r drop, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_20000_filter <-
   data_20000 %>%
   select(-link, -street_address, -full_address, -acres, -description, -ZipCity)
@@ -152,36 +196,36 @@ Finally, we fill all NA with 0. The columns having NA is as follows
 Then we export the cleaned dataframe to csv
 
 
-```{r export, warning = FALSE, message = FALSE, results='hide'}
+```{r export, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data_20000_filter[is.na(data_20000_filter)] <- 0
 summary(data_20000_filter)
-
 file_path <- "data/Rental_Properties_20000.csv"
-
-if(!file.exists(file_path)) {
-  write.csv(data_20000_filter, file_path)
-} else {
-  data_20000_filter <- fread(file_path)
-}
+write.csv(data_20000_filter, file_path)
+data_20000_filter <- fread(file_path)
+# if(!file.exists(file_path)) {
+#   write.csv(data_20000_filter, file_path)
+# } else {
+#   data_20000_filter <- fread(file_path)
+# }
 ```
 
 ## Data Transformations and Plots
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
+```{r plot bar, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 p<-ggplot(data=data_20000_filter, aes(x=house_type)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('Type of Property') +
   geom_bar()
 p
 ```
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
+```{r count, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 y <- count(data_20000_filter, house_type)
 print(y)
 ```
 
 Looking at the data we see that the properties we will most be evaluating will be Apartment style places with 17749 observations. Other places are lesser in number but still there. The second largest group is the Condo/Multiplex group that we are looking at with 1519 observations. Other than that the smallest group we see is the sublease or student contract group which only has 1 observation.
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
+```{r plot2, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 p<-ggplot(data=data_20000_filter, aes(x=state)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('State in which the property is located') +
@@ -189,24 +233,23 @@ p<-ggplot(data=data_20000_filter, aes(x=state)) +
 p
 ```
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results= 'hide'}
+```{r count2, echo = FALSE, warning = FALSE, message = FALSE, results= 'hide'}
 number_states <- data_20000_filter %>%
   group_by(state) %>% count() 
-
 arrange(number_states, -n)
 ```
 
 The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
 
 
-```{r, warning = FALSE, message = FALSE, results= 'asis'}
+```{r  box plot, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 data_20000_filter %>% 
   ggplot(aes(x = reorder(state,price), y = price ,group=state))+
   ylim (0, 10000) + 
   xlab('State')+
   geom_boxplot()+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
-  ggtitle("Within State Variability of Log Death Rate")+
+  ggtitle("Within State Variability of Rental Price")+
   ylab("Monthly rent (in $)")
 ```
 
@@ -229,7 +272,7 @@ data_model$house_type <- as.numeric(as.factor(data_model$house_type))
 data_model$smoking_ind <- as.numeric(as.factor(data_model$smoking_ind))
 data_model$pets_ind <- as.numeric(as.factor(data_model$pets_ind))
 data_model$state <- as.numeric(as.factor(data_model$state))
-# data_model <- select(data_model, -V1)
+data_model <- select(data_model, -V1)
 ```
 
 Also, we need to predict the rental price which is continuous. In order to implement random forest, we transform the price to binary outcome, with the threshold of median of rental price, which is (1500).
@@ -261,9 +304,7 @@ train_test.index <- sample(n, 18000)
 train.index <- sample(train_test.index, 13000)
 #train.index <- sample(n, 13000)
 test.index <- sample(n, 19999) - (sample(n, 19999)-train_test.index) - train.index
-
 # Split the data
-
 n1 <- floor(13000)
 n2 <- floor(5000)
 set.seed(1)
@@ -271,7 +312,6 @@ idx_train <- sample(n, n1)
 idx_no_train <- which(! seq(1:n) %in% idx_train)
 idx_test <- sample(idx_no_train, n2)
 idx_val <- which(! idx_no_train %in% idx_test)
-
 data.w.price.train <- data_model[idx_train,]
 data.w.price.test <- data_model[idx_test,]
 data.w.price.val <- data_model[idx_val,]
@@ -284,10 +324,11 @@ In this part, we fit the linear regression model `price` vs. other variables  as
 
 1. Since the `description` and `price` features are useless for linear model, we drop them.
 2. From the summary of fit1, we select pool, dishwasher, washer-dryer, ac, parking, state, num_beds, num_baths, house_type, sqft, Population, population density and security deposit as the variables of our final model. All the variables are significant at 0.001. The result of this model is showed as follow.
+3. Training MSE: 965083.3, Testing MSE: 1304949
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
-data.lm.train <- select(data.w.price.train, -description)
-data.lm.train <- select(data.lm.train, -price_binary)
+```{r normal LM, echo = FALSE, warning = FALSE, message = FALSE, results = TRUE}
+# data.lm.train <- select(data.w.price.train, -description)
+data.lm.train <- select(data.w.price.train, -price_binary)
 
 fit1 <- lm(price ~ ., data = data.lm.train)  # model one 
 summary(fit1) 
@@ -295,14 +336,14 @@ summary(fit1)
 fit2 <- lm(price ~ pool+ dishwasher + `washer-dryer`+ ac+ parking+ state+ num_beds+ num_baths+ house_type+ sqft+ Population+ PopulationDensity + security_deposit, data = data.lm.train)
 summary(fit2) 
 
-data.lm.test <- select(data.w.price.test, -description)
-data.lm.test <- select(data.lm.test, -price_binary)
+# data.lm.test <- select(data.w.price.test, -description)
+data.lm.test <- select(data.w.price.test, -price_binary)
 
 training_mse = mean((data.lm.train$price - predict.lm(fit2, data.lm.train)) ^ 2)
 testing_mse = mean((data.lm.test$price - predict.lm(fit2, data.lm.test)) ^ 2)
 
-training_mse
-testing_error
+# training_mse
+# testing_mse
 
 par(mfrow=c(1,2))
 
@@ -317,9 +358,8 @@ In this part, we introduce LASSO for a linear regression model with fewer variab
 2. `price` is set to be X and the other column of training data are set to be Y, and they are used to fit the first model, `model1`, with alpha = 1 and nfolds = 10.
 3. We use LASSO to select several useful variables and refit the linear regression model, named `model2_lasso`, finding that all the vaiables are significant at 0.001, including dishwasher, number of baths, sqft, population density and security deposit.
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+```{r LASSO, echo = FALSE, warning = FALSE, message = FALSE, results = TRUE}
 library(glmnet)
-dim(data.lm.train)
 
 set.seed(1)
 x_variables <- model.matrix(price~., data.lm.train)[,-1]
@@ -327,8 +367,7 @@ y_variable  <- data.lm.train$price
 
 model1 <- cv.glmnet(x_variables, y_variable, nfolds = 10, alpha = 1)
 plot(model1)
-cv.error.lasso=model1$cvm[model1$lambda==model1$lambda.1se]
-cv.error.lasso
+# cv.error.lasso=model1$cvm[model1$lambda==model1$lambda.1se]
 
 
 coef.1se <- coef(model1, s="lambda.1se")
@@ -356,10 +395,10 @@ After using linear regression models to create the predictors for specific price
 3. We use LASSO to select several useful variables and refit the logistic regression model, named `fit.logit2`, finding that `num_beds` is not significant in this model. So we drop this column and refit the model again, named `fit.logit.final`.
 4.Finally, the logistic regression model includes pool, dishwasher, washer_dryer, ac, parking, state, num_baths, house_type, sqft, smoking_ind, pets_ind, Population, PopulationDensity and security_deposit. All of the variables are significant at 0.01. Among those, ac, dishwasher and Pool play relatively important roles when the prices are setting.
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
-data.log.train <- select(data.w.price.train, -description)
-data.log.train <- select(data.log.train, -price)
-data.log.train <- select(data.log.train, -acres)
+```{r LogReg, echo = FALSE, warning = FALSE, message = FALSE, results = TRUE}
+# data.log.train <- select(data.w.price.train, -description)
+data.log.train <- select(data.w.price.train, -price)
+# data.log.train <- select(data.log.train, -acres)
 names(data.log.train)[names(data.log.train) == 'washer-dryer'] <- 'washer_dryer'
 X <- model.matrix(price_binary~., data.log.train)[,-1]
 Y <- data.log.train$price_binary
@@ -392,20 +431,24 @@ Anova(fit.logit.final)
 
 In random forest model, we just need the binary data of the price, so we remove `price` column, and we need to rename the column `washer-dryer` for the random forest package
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+```{r RF, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
 data.rf.train <- select(data.w.price.train, -price)
 data.rf.train <- 
   data.rf.train %>%
   select(price_binary, everything())
-
+data.rf.test <- select(data.w.price.test, -price)
+data.rf.test <- 
+  data.rf.test %>%
+  select(price_binary, everything())
 names(data.rf.train)[names(data.rf.train) == 'washer-dryer'] <- 'washer_dryer'
-data.rf.train
+names(data.rf.test)[names(data.rf.test) == 'washer-dryer'] <- 'washer_dryer'
 ```
+
+### Tune Hyperparameter
 
 Firstly, we use OOB to find the testing error for given parameter, and we choose mtry from 1 to 10, with 150 tree.
 
 ```{r tune rf hyperparameter, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
-
 set.seed(1)
 rf.error.p <- 1:10
 for (p in 1:10){
@@ -418,18 +461,55 @@ for (p in 1:10){
   }
   rf.error.p[p] <- fit.rf.train$mse[150]
 }
-
 plot(1:10, rf.error.p, pch=16,
      main = "Testing errors of mtry with 150 trees",
      xlab="mtry",
      ylab="OOB mse of mtry")
 # line(1:10, rf.error.p)
-
 ```
 
-According to the above plot, we choose 3 as mtry based on elbow rule
+According to the above plot, we choose 3 as mtry based on elbow rule.
+
+Then we set ntree to be 500, to find the optimal number of tree.
+
+```{r given mtry 15, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+if(!file.exists("data/rf_model_3_500.RData")) {
+  fit.rf.train <- randomForest(price_binary~., data=data.rf.train, mtry=3, ntree=500)
+  save(fit.rf.train, file = "data/rf_model_3_500.RData")
+} else {
+  load("data/rf_model_3_500.RData")
+}
+plot(fit.rf.train, main = "Testing errors of trees with 3 mtry")
+```
+
+Also based on the above plot, we choose 100 as ntree
+
+### PCA
+
+Apply PCA to dataset would help us to remove correlated data and speed up the runtime of the program. However, in this analysis, the runtime to train 20000 data is fast enough (about several minutes). Therefore, we decide not to implement PCA here to keep the information in the dataset.
+
+### Performance of Random Forest Model
+
+Finally, given fixed mtry and ntree, we can compute the testing error of our random forest model. After we do prediction on the testing dataset, we set the threshold as 0.5. If the result is greater than 0.5, we would categorize the result as 1. On the other hand, result less than 0.5 is 0. Finally we compte the error to be 0.082
+
+```{r fit rf, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+set.seed(1)
+if(!file.exists("data/rf_model_4_100.RData")) {
+  fit.rf.train <- randomForest(price_binary~., data=data.rf.train, mtry=4, ntree=100)
+  save(fit.rf.train, file = "data/rf_model_4_100.RData")
+} else {
+  load("data/rf_model_4_100.RData")
+}
+plot(fit.rf.train, main = "Random Forest Model with 4 mtry and 100 ntree")
+```
+
+```{r calculate rf error, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+# This code chunk cannot be compiled while knitting to PDF (because of dummy function)
+# predict.rf <- predict(fit.rf.train, newdata=data.rf.test)
+# diff_col <- ifelse(abs(data.rf.test$price_binary - predict.rf) >=0.5, 1, 0)
+# mean(diff_col)
+```
 
 # Performance Analysis
 
 # Conclusion
-
