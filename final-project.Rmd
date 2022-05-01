@@ -27,7 +27,7 @@ knitr::opts_chunk$set(fig.height=4, fig.width=7, fig.align = 'center', warning =
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, randomForest, tfdatasets, keras)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, randomForest, tfdatasets, keras, car)
 ```
 
 # Executive Summary
@@ -313,6 +313,118 @@ data.w.price.train <- data_model[idx_train,]
 data.w.price.test <- data_model[idx_test,]
 data.w.price.val <- data_model[idx_val,]
 ```
+
+## Linear Regression
+
+### Normal Linear Regression
+In this part, we fit the linear regression model `price` vs. other variables  as `fit1` directly, then select significant variables to fit the final fit, `fit2`. 
+
+1. Since the `description` and `price` features are useless for linear model, we drop them.
+2. From the summary of fit1, we select pool, dishwasher, washer-dryer, ac, parking, state, num_beds, num_baths, house_type, sqft, Population, population density and security deposit as the variables of our final model. All the variables are significant at 0.001. The result of this model is showed as follow.
+3. Training MSE: 965083.3, Testing MSE: 1304949
+
+```{r training, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+# data.lm.train <- select(data.w.price.train, -description)
+data.lm.train <- select(data.w.price.train, -price_binary)
+
+fit1 <- lm(price ~ ., data = data.lm.train)  # model one 
+summary(fit1) 
+
+fit2 <- lm(price ~ pool+ dishwasher + `washer-dryer`+ ac+ parking+ state+ num_beds+ num_baths+ house_type+ sqft+ Population+ PopulationDensity + security_deposit, data = data.lm.train)
+summary(fit2) 
+
+# data.lm.test <- select(data.w.price.test, -description)
+data.lm.test <- select(data.w.price.test, -price_binary)
+
+training_mse = mean((data.lm.train$price - predict.lm(fit2, data.lm.train)) ^ 2)
+testing_mse = mean((data.lm.test$price - predict.lm(fit2, data.lm.test)) ^ 2)
+
+# training_mse
+# testing_mse
+
+par(mfrow=c(1,2))
+
+plot(fit2, 1:2)
+```
+
+### LASSO Model
+
+In this part, we introduce LASSO for a linear regression model with fewer variable since in many case not all the variables are useful for a model. So using lasso can help to reduce computation load significantly with maintaining a good result. We build the model with lasso following 3 steps.
+
+1. Description and price_binary column are drop since they make no sense for this model.
+2. `price` is set to be X and the other column of training data are set to be Y, and they are used to fit the first model, `model1`, with alpha = 1 and nfolds = 10.
+3. We use LASSO to select several useful variables and refit the linear regression model, named `model2_lasso`, finding that all the vaiables are significant at 0.001, including dishwasher, number of baths, sqft, population density and security deposit.
+
+```{r lasso, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+library(glmnet)
+dim(data.lm.train)
+
+set.seed(1)
+x_variables <- model.matrix(price~., data.lm.train)[,-1]
+y_variable  <- data.lm.train$price
+
+model1 <- cv.glmnet(x_variables, y_variable, nfolds = 10, alpha = 1)
+plot(model1)
+cv.error.lasso=model1$cvm[model1$lambda==model1$lambda.1se]
+cv.error.lasso
+
+
+coef.1se <- coef(model1, s="lambda.1se")
+coef.1se <- coef.1se[which(coef.1se !=0),][-1]
+var.1se <- rownames(as.matrix(coef.1se))
+
+lasso_sub <- data.lm.train %>%
+  select(price, var.1se)
+
+model2_lasso <- lm(price~.,lasso_sub)
+summary(model2_lasso)
+
+
+par(mfrow=c(1,2))
+
+plot(model2_lasso, 1:2)
+```
+
+## Logistic Regression
+
+After using linear regression models to create the predictors for specific price of rental, we use logistic regression model to predict whether one rental house or department's price is higher or lower than the median. In this part, price_binary that we create early is used as the result for prediction, and we build the model following 4 steps.
+
+1. Description and price column are drop since they make no sense for this model.
+2. Price_binary is set to be X and the other column of training data are set to be Y, and they are used to fit the first model, `fit.log.cv`, with alpha = 1 and nfolds = 10.
+3. We use LASSO to select several useful variables and refit the logistic regression model, named `fit.logit2`, finding that `num_beds` is not significant in this model. So we drop this column and refit the model again, named `fit.logit.final`.
+4.Finally, the logistic regression model includes pool, dishwasher, washer_dryer, ac, parking, state, num_baths, house_type, sqft, smoking_ind, pets_ind, Population, PopulationDensity and security_deposit. All of the variables are significant at 0.01. Among those, ac, dishwasher and Pool play relatively important roles when the prices are setting.
+
+```{r training 2, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+# data.log.train <- select(data.w.price.train, -description)
+data.log.train <- select(data.w.price.train, -price)
+# data.log.train <- select(data.log.train, -acres)
+names(data.log.train)[names(data.log.train) == 'washer-dryer'] <- 'washer_dryer'
+X <- model.matrix(price_binary~., data.log.train)[,-1]
+Y <- data.log.train$price_binary
+
+set.seed(10) # to have same sets of K folds
+fit.log.cv <- cv.glmnet(X, Y, alpha=1, family="binomial", nfolds = 10, type.measure = "deviance")  
+plot(fit.log.cv)
+
+coef.log.1se <- coef(fit.log.cv, s="lambda.1se")  
+coef.log.1se <- coef.log.1se[which(coef.log.1se !=0),] 
+var.log <- rownames(as.matrix(coef.log.1se))
+
+#log_sub <- data.log.train %>%
+  #select(price_binary, var.log)
+
+fit.logit2 <- glm(Y ~ pool+dishwasher+washer_dryer+ac+parking+state+num_beds+num_baths+house_type+sqft+
+                   smoking_ind+pets_ind+Population+PopulationDensity+security_deposit, family=binomial, 
+                 data = data.log.train)
+summary(fit.logit2) 
+
+fit.logit.final<- glm(Y ~ pool+dishwasher+washer_dryer+ac+parking+state+num_baths+house_type+sqft+
+                   smoking_ind+pets_ind+Population+PopulationDensity+security_deposit, family = binomial, 
+                 data = data.log.train)
+summary(fit.logit.final) 
+Anova(fit.logit.final)
+```
+
 
 ## Random Forest
 
