@@ -28,7 +28,7 @@ if(!require('pacman')) {
   install.packages('pacman')
 }
 
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car, partykit)
 ```
 
 # Executive Summary
@@ -259,6 +259,8 @@ We see the prices remaining fairly same for the start with the prices rising wit
 
 # Model Training
 
+## Dataset Preparation
+
 To do the further model analysis, we transform some of the data. Firstly, convert the following columns from characters to binary data
 
 * house_type
@@ -289,9 +291,7 @@ length(unique(data_model$city))
 data_model <- select(data_model, -city)
 ```
 
-# Model Training
-
-Firstly, we split the data for choosing and validating and model
+We split the data for choosing and validating and model
 
 * train: 13000
 * test: 5000
@@ -334,7 +334,7 @@ data.lm.train <- select(data.w.price.train, -price_binary)
 fit1 <- lm(price ~ ., data = data.lm.train)  # model one 
 summary(fit1) 
 
-fit2 <- lm(price ~ pool+ dishwasher + `washer-dryer`+ ac+ parking+ state+ num_beds+ num_baths+ house_type+ sqft+ Population+ PopulationDensity + security_deposit, data = data.lm.train)
+fit2 <- lm(price ~ pool+ dishwasher + `washer-dryer`+ ac+ parking+ state+ num_beds+ num_baths+ house_type+ sqft+ Population+ PopulationDensity + security_deposit + avg_level, data = data.lm.train)
 
 summary(fit2) 
 
@@ -395,19 +395,21 @@ plot(model2_lasso, 1:2)
 
 ## Logistic Regression
 
-After using linear regression models to create the predictors for specific price of rental, we use logistic regression model to predict whether one rental house or department's price is higher or lower than the median. In this part, price_binary that we create early is used as the result for prediction, and we build the model following 4 steps.
+After using linear regression models to create the predictors for specific price of rental, we use logistic regression model to predict whether one rental house or department's price is higher or lower than the median. In this part, `price_binary` that we create early is used as the result for prediction, and we build the model following 4 steps.
 
 1. Description and price column are drop since they make no sense for this model.
 2. Price_binary is set to be X and the other column of training data are set to be Y, and they are used to fit the first model, `fit.log.cv`, with alpha = 1 and nfolds = 10.
 3. We use LASSO to select several useful variables and refit the logistic regression model, named `fit.logit2`, finding that `num_beds` is not significant in this model. So we drop this column and refit the model again, named `fit.logit.final`.
-4.Finally, the logistic regression model includes pool, dishwasher, washer_dryer, ac, parking, state, num_baths, house_type, sqft, smoking_ind, pets_ind, Population, PopulationDensity and security_deposit. All of the variables are significant at 0.01. Among those, ac, dishwasher and Pool play relatively important roles when the prices are setting.
+4.Finally, the logistic regression model includes pool, dishwasher, washer_dryer, ac, parking, state, num_baths, house_type, sqft, smoking_ind, pets_ind, PopulationDensity and security_deposit. All of the variables are significant at 0.01. Among those, ac, dishwasher and Pool play relatively important roles when the prices are setting.
 
 
 ```{r LogReg, echo = FALSE, warning = FALSE, message = FALSE, results = TRUE}
 # data.log.train <- select(data.w.price.train, -description)
 data.log.train <- select(data.w.price.train, -price)
+data.log.test <- select(data.w.price.test, -price)
 # data.log.train <- select(data.log.train, -acres)
 names(data.log.train)[names(data.log.train) == 'washer-dryer'] <- 'washer_dryer'
+names(data.log.test)[names(data.log.test) == 'washer-dryer'] <- 'washer_dryer'
 X <- model.matrix(price_binary~., data.log.train)[,-1]
 Y <- data.log.train$price_binary
 
@@ -423,17 +425,30 @@ var.log <- rownames(as.matrix(coef.log.1se))
   #select(price_binary, var.log)
 
 fit.logit2 <- glm(Y ~ pool+dishwasher+washer_dryer+ac+parking+state+num_beds+num_baths+house_type+sqft+
-                   smoking_ind+pets_ind+Population+PopulationDensity+security_deposit, family=binomial, 
+                   smoking_ind+pets_ind+Population+PopulationDensity+security_deposit+avg_level, family=binomial, 
                  data = data.log.train)
-summary(fit.logit2) 
+# summary(fit.logit2) 
 
 fit.logit.final<- glm(Y ~ pool+dishwasher+washer_dryer+ac+parking+state+num_baths+house_type+sqft+
-                   smoking_ind+pets_ind+Population+PopulationDensity+security_deposit, family = binomial, 
+                   smoking_ind+pets_ind+PopulationDensity+security_deposit+avg_level, family = binomial, 
                  data = data.log.train)
-summary(fit.logit.final) 
+# summary(fit.logit.final) 
 Anova(fit.logit.final)
 ```
 
+After We get the final model of logistic regression, we predict the result in test dataset and compute the confusion matrix. From the confusion matrix, we find the misclassification error is 0.2156, which is a little bit higher.
+
+However, after we integrate the second dataset, the misclassification error drops to 0.1922, indicating that the income would improve the final result.
+
+```{r LogRegPrediction, echo = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
+# This code chunk cannot be compiled while knitting to PDF (because of dummy function)
+predict.logReg <- predict(fit.logit.final, data.log.test, type="response")
+threshold <- 0.5
+diff_col <- ifelse(predict.logReg >= threshold, 1, 0)
+cm <- table(diff_col, data.log.test$price_binary)
+log.mce <- (cm[1,2]+cm[2,1])/sum(cm)
+log.mce
+```
 
 ## Random Forest
 
@@ -517,6 +532,13 @@ plot(fit.rf.train, main = "Random Forest Model with 4 mtry and 100 ntree")
 # diff_col <- ifelse(abs(data.rf.test$price_binary - predict.rf) >=0.5, 1, 0)
 # mean(diff_col)
 ```
+
+We draw the importance of variables from the final random forest model. Here, we can see that security deposit is the most important factor, and the area is the second important factor. It is reasonable that those two factors are highly correlated to the rental price. As for the `avg_level`, it is also regarded as a crucial factor, indicating that the financial condition actually related to the rental price. Surprisingly, the facilities of the house is not important compared to the security deposit, area, localtion and the level of income.
+
+```{r importance, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+varImpPlot(fit.rf.train)
+```
+
 
 # Performance Analysis
 
