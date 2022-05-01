@@ -1,5 +1,5 @@
 ---
-title: "final-project"
+title: "Housing Rental Pricing Prediction"
 author:
 - Pragyat Agrawal
 - Ruxuan Ji
@@ -35,7 +35,7 @@ pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomFore
 
 ## Background
 
-The US rental market has been growing rapidly growing over time, making it one of the most sought after areas for investment. Be it from small home owners to big private equity firms, everyone seems to be after housing, expecting the values of these houses to rise and supplement their income by renting these places. Many people consider that location is the "only important" factor responsible for a house's value and the rent that can be expected of it, but this is far from the truth. There are a lot of other factors that need to be considered for determining housing valuations as we see a huge variation in prices in houses located in the same vicinity. There must be something about these houses which is causing such a big price change. Hence we will be analyzing the data related to US Rental Listings in Summer of 2021, to find which of these factors, which consist of many in-house amenity components, impacts housing values the most. 
+The US rental market has been growing rapidly growing over time, making it one of the most sought after areas for investments. Be it from small home owners to big private equity firms, everyone seems to be after housing, expecting the values of these houses to rise and supplement their income by renting these places. Many people consider that location is the "only important" factor responsible for a house's value and the rent that can be expected of it, but this is far from the truth. There are a lot of other factors that need to be considered for determining housing valuations as we see a huge variation in prices in houses located in the same vicinity. There must be something about these houses which is causing such a big price change. Hence we will be analyzing the data related to US Rental Listings in Summer of 2021, to find which of these factors, which consist of many in-house amenity components, impacts housing values the most. 
 
 These amenities range from simple aka micro-factors like the availability of Pools and Dishwashers in the house to major aka macro-factors i.e. cities. The data will also give us the opportunity to find in which cities are these factors playing the most impact. With over 27,000 values for each predictor in our data, we have a sufficient sample size to make a reasonable conclusion regarding the price of these summer rentals. 
 
@@ -92,9 +92,12 @@ The goal of this study is to analyze the most important factors affecting the ho
 
 ## Summary of Findings
 
+When we started the analysis we initially thought that the housing prices would be affected by a very few factors which may be pushing the results higher. But this is not true, instead there are a plethora of factors affecting housing prices. From our research we found a lot of significant factors affecting housing like the availability of a dishwasher, washer-dryer, number of baths, population density etc. Some factors were expected due to the monetary values associated with them but some factors like if smoking is allowed or not or pets allowed or not were very unanticipated to be significant. Hence, through this research, we were able to pinpoint the various factors that go into play for determining housing prices. 
+
+
 ## Issues and Limitations
 
-The biggest issue we initially faced was with respect to the file size which turned out to be quiet massive even for R Studio. The raw data we started with was half a gigabyte big which turned out to be very massive for any for of extrapolation. Hence we had to shorten the data out.......
+The biggest issue we initially faced was with respect to the file size which turned out to be quiet massive even for R Studio. The raw data we started with was half a gigabyte big which turned out to be very massive for any for of extrapolation. Hence we had to shorten the data out choosing 20,000 data points for a particular seed to ensure reproducibility After that we also had some problems with knitting the data because of which we had to keep clearing our knitr cache to ensure we get the right data across on the PDF. Finally, the random forest part took some time running as it had to run a data heavy analysis. We had to wait this part out as we wanted to give the highest quality output. 
 
 # Exploratory Data Analysis
 
@@ -521,3 +524,6 @@ plot(fit.rf.train, main = "Random Forest Model with 4 mtry and 100 ntree")
 # Performance Analysis
 
 # Conclusion
+
+In conclusion we find that various factors affect housing prices, beyond the simple square feet and location. The various micro-factors like availability of a pool, washer-dryer, dishwasher etc. play an important role as well and shouldn't be forgotten when considering if a housing rental price. Our data is most applicable to Apartment and Condo/Multiplex form of apartments, though with repeated testing our results can be extended to House, Townhome, Single Room and Sublease or Student contract form of rentals as well. There was a also a huge variability noticed in the state where the houses are located with states like New York being more expensive than mid western states or southern states. This can also be explained by the per capita incomes at these places which can drastically differ. We also ran a random forest mdeol to predict the values ourselves with a huge accuracy. We find that random forest is the best model to predict the housing prices, combined with simple logistic regression.
+
