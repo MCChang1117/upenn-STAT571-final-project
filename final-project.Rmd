@@ -5,13 +5,13 @@ author:
 - Ruxuan Ji
 - Meng-Chuan Chang
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: 3
-    number_sections: yes
   html_document:
     toc: yes
     theme: united
+    toc_depth: 3
+    number_sections: yes
+  pdf_document:
+    toc: yes
     toc_depth: 3
     number_sections: yes
   word_document:
@@ -28,7 +28,7 @@ if(!require('pacman')) {
   install.packages('pacman')
 }
 
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car, partykit, pander)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car, partykit, pander, usmap)
 ```
 
 # Executive Summary
@@ -153,7 +153,7 @@ rental_tax_data <-
 ```
 
 ```{r assign data, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
-data <- rental_tax_data
+data <- rental_tax_data[!is.na(rental_tax_data$avg_level),]
 ```
 
 ### Filter the data
@@ -214,22 +214,36 @@ data_20000_filter <- fread(file_path)
 
 ## Data Transformations and Plots
 
+### House Type
+
+```{r count, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
+y <- count(data_20000_filter, house_type)
+y_all <- count(data, house_type)
+y$n_all <- y_all$n
+pander(y)
+```
+
 ```{r plot bar, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
-p<-ggplot(data=data_20000_filter, aes(x=house_type)) +
+# p<-ggplot(data=data_20000_filter, aes(x=house_type)) +
+#   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+#   xlab('Type of Property (17,000 observations)') +
+#   geom_bar()
+# p
+p<-ggplot(data=data, aes(x=house_type)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
-  xlab('Type of Property') +
+  xlab('Type of Property (270,000 observations)') +
   geom_bar()
 p
 ```
-```{r count, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
-y <- count(data_20000_filter, house_type)
-print(y)
-```
 
-Looking at the data we see that the properties we will most be evaluating will be Apartment style places with 17749 observations. Other places are lesser in number but still there. The second largest group is the Condo/Multiplex group that we are looking at with 1519 observations. Other than that the smallest group we see is the sublease or student contract group which only has 1 observation.
+$n$ is the number of count with 17,000 observations, and $n_all$ is that with 270,000 observations. Looking at the data we see that the properties we will most be evaluating will be Apartment style places with 17749 observations. Other places are lesser in number but still there. The second largest group is the Condo/Multiplex group that we are looking at with 1519 observations. Other than that the smallest group we see is the sublease or student contract group which only has 1 observation.
+
+Also, compared $n$ with $n_all$, we find the distribution is almost the same. Therefore, it is safe to use those 17,000 samples for further analysis.
+
+### Count based on state
 
 ```{r plot2, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
-p<-ggplot(data=data_20000_filter, aes(x=state)) +
+p<-ggplot(data=data, aes(x=state)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   xlab('State in which the property is located') +
   geom_bar()
@@ -242,8 +256,9 @@ number_states <- data_20000_filter %>%
 arrange(number_states, -n)
 ```
 
-The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are randomly choosing 20,000 data points so this will fluctuate if we change the data seed. 
+The data represents all states, some more than others. Texas is the most represented state with the least being Vermont at 4 listings. The sample is representative of all states in the US. We are choosing roughly 270,000 data points so this, but in our model training we only randomly choose 20,000 observations. The plot with 20,000 data may fluctuate if we change the data seed but the overall tendency should be the same. 
 
+### Rental Price Variation among US States
 
 ```{r  box plot, echo = FALSE, warning = FALSE, message = FALSE, results= 'asis'}
 data_20000_filter %>% 
@@ -258,7 +273,28 @@ data_20000_filter %>%
 
 We see the prices remaining fairly same for the start with the prices rising with states like New York, California, Florida and Massachusetts. This is evidently true for these "more expensive" places as states on the right end of the spectrum like California, and Massachusetts are known for their high per capita incomes which tends to push housing prices up. There is a lot of variation in data as well as we move to states with higher housing prices, indicated through the presence of excessive outliers on the right end of the boxplot.
 
+### Average Income Level among US States
 
+```{r usplot, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
+plotUSMap <- function(inputDf, col, title, subTitle){
+  plot <-
+    plot_usmap(data = inputDf, values = col, include = inputDf$state, color = "blue") +
+    scale_fill_continuous(low = "white", high = "blue", name = col, label = scales::comma) +
+    labs(title = title, subtitle = subTitle) +
+    theme(legend.position = "right")
+  print(plot)
+}
+
+data_income <-
+  data %>%
+  select(state, avg_level) %>%
+  group_by(state) %>%
+    summarise(avg_level_state = mean(avg_level))
+
+plotUSMap(data_income, "avg_level_state", "US Average Income Level", "SOI Tax statistics in 2019")
+```
+
+For average income level (from 1 to 6) among all state, we first group by the state, take average of `avg_level`, and then draw the us plot to see the distribution of income among US state. The average income level in NY, WA, CA and TX are first tier, which is reasonable and meet our expectation. Hence we choose to use the data for further model training.
 
 # Model Training
 
@@ -525,7 +561,7 @@ if(!file.exists("data/rf_model_4_100.RData")) {
 } else {
   load("data/rf_model_4_100.RData")
 }
-plot(fit.rf.train, main = "Random Forest Model with 4 mtry and 100 ntree")
+# plot(fit.rf.train, main = "Random Forest Model with 4 mtry and 100 ntree")
 ```
 
 ```{r calculate rf error, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
