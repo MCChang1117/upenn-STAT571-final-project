@@ -28,7 +28,7 @@ if(!require('pacman')) {
   install.packages('pacman')
 }
 
-pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car, partykit)
+pacman::p_load(data.table, dplyr, tidyverse, xtable, ggplot2, glmnet, randomForest, tfdatasets, keras, car, partykit, pander)
 ```
 
 # Executive Summary
@@ -330,16 +330,16 @@ In this part, we fit the linear regression model `price` vs. other variables  as
 3. Training MSE: 965083.3, Testing MSE: 1304949
 
 
-```{r normal LM, echo = FALSE, warning = TRUE, message = FALSE, results = 'hide'}
+```{r normal LM, echo = FALSE, warning = TRUE, message = FALSE, results = 'asis'}
 # data.lm.train <- select(data.w.price.train, -description)
 data.lm.train <- select(data.w.price.train, -price_binary)
 
 fit1 <- lm(price ~ ., data = data.lm.train)  # model one 
-summary(fit1) 
+# summary(fit1) 
 
 fit2 <- lm(price ~ pool+ dishwasher + `washer-dryer`+ ac+ parking+ state+ num_beds+ num_baths+ house_type+ sqft+ Population+ PopulationDensity + security_deposit + avg_level, data = data.lm.train)
 
-summary(fit2) 
+pander(summary(fit2), caption = "summary of linear regression model")
 
 # data.lm.test <- select(data.w.price.test, -description)
 
@@ -351,8 +351,6 @@ data.lm.test <- select(data.w.price.test, -price_binary)
 training_mse = mean((data.lm.train$price - predict.lm(fit2, data.lm.train)) ^ 2)
 testing_mse = mean((data.lm.test$price - predict.lm(fit2, data.lm.test)) ^ 2)
 
-# training_mse
-# testing_mse
 par(mfrow=c(1,2))
 
 plot(fit2, 1:2)
@@ -388,7 +386,7 @@ lasso_sub <- data.lm.train %>%
   select(price, var.1se)
 
 model2_lasso <- lm(price~.,lasso_sub)
-summary(model2_lasso)
+pander(summary(model2_lasso), caption = "summary of lasso regression model")
 
 
 par(mfrow=c(1,2))
@@ -436,7 +434,8 @@ fit.logit.final<- glm(Y ~ pool+dishwasher+washer_dryer+ac+parking+state+num_bath
                    smoking_ind+pets_ind+PopulationDensity+security_deposit+avg_level, family = binomial, 
                  data = data.log.train)
 # summary(fit.logit.final) 
-Anova(fit.logit.final)
+pander(Anova(fit.logit.final), caption = "summary of logistic regression model (binary classification)")
+
 ```
 
 After We get the final model of logistic regression, we predict the result in test dataset and compute the confusion matrix. From the confusion matrix, we find the misclassification error is 0.2156, which is a little bit higher.
@@ -541,9 +540,6 @@ We draw the importance of variables from the final random forest model. Here, we
 ```{r importance, echo = FALSE, warning = FALSE, message = FALSE, results='asis'}
 varImpPlot(fit.rf.train)
 ```
-
-
-# Performance Analysis
 
 # Conclusion
 
